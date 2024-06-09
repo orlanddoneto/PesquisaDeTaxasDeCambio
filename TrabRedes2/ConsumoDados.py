@@ -24,7 +24,7 @@ def ajustarTimestamp(tabela):
     try:
         timestamp = float(tabela['timestamp'])
         dt = datetime.fromtimestamp(timestamp, tz=timezone("America/Sao_Paulo"))
-        dt_formatada = dt.strftime("%Y%m%d")
+        dt_formatada = dt.strftime("%d/%m/%Y")
         tabela['timestamp'] = dt_formatada
     except ValueError:
         print("não foi possível converter o valor do timestamp para um número")
@@ -47,12 +47,10 @@ def gerarMensagemCotacao(tabela):
 
 def getJsonCotacaoPeriodo(moeda,moeda_base,start_date,end_date):
 #Trabalhar aqui
-    start_date = start_date.strftime("%Y%m%d")
-    end_date = end_date.strftime("%Y%m%d")
     busca = f"{moeda}-{moeda_base}"
     response = requests.get(f"{url_periodo}{busca}/?start_date={start_date}&end_date={end_date}")
     json_response = response.json()
-    return json_response[0]
+    return json_response
 
 def gerarListaDatas(data_inicio, data_fim):
     delta = data_fim - data_inicio
@@ -60,18 +58,16 @@ def gerarListaDatas(data_inicio, data_fim):
     for i in range(delta.days + 1):
         day = data_inicio + timedelta(days=i)
         lista_datas.append(day)
-    return lista_datas
+    return  lista_datas
 
-def gerarListaCotacoesPeriodo(data_inicio,data_fim,moeda,moeda_base):
-    lista_datas = gerarListaDatas(data_inicio,data_fim)
-    lista_cotacoes_periodo = []
-    for data in lista_datas:
-        data_anterior = data - timedelta(days=3)
-        tabela = getJsonCotacaoPeriodo(moeda,moeda_base,data_anterior,data)
-        tabela = ajustaTabela(tabela)
-        lista_cotacoes_periodo.append(tabela)
+def ajustarTabelaDoPeriodo(json):
 
-    return lista_cotacoes_periodo
+    for i, item in enumerate(json):
+        if (i == 0):
+            json[0] = ajustaTabela(json[0])
+        else:
+            json[i] = ajustarTimestamp(json[i])
+    return json
 
 def buscarInfoCambio(moedas,moeda_base):
     tabela = gerarTableCotacao(moedas,moeda_base)
@@ -80,9 +76,8 @@ def buscarInfoCambio(moedas,moeda_base):
         ajustaTabela(tabela[moeda])
         string_info += f"{gerarMensagemCotacao(tabela[moeda])} \n\n"
     return string_info
-    #return tabela
 
-#PROMPT BUSCA COTAÇÃO DO DIA
+#PROMPT
 
 '''moedas = ['USD','EUR']
 moeda_base = 'BRL'
@@ -93,26 +88,10 @@ print(resultado_busca)'''
 #Consulta por período
 ########################
 
-"""
-
-start_date= date(year=2020,month=2,day=1)
-end_date = date(year=2020,month=2,day=29)
+start_date="20200201"
+end_date="20200229"
 moeda_base = 'BRL'
-moeda = 'USD'
 
-lista_cotacoes_periodo = gerarListaCotacoesPeriodo(start_date,end_date,moeda,moeda_base)
-
-#Gerar Gráficos
-eixoY = [item["bid"] for item in lista_cotacoes_periodo]
-eixoX = [item["data"] for item in lista_cotacoes_periodo]
-
-plt.plot(eixoX,eixoY)
-eixoX_to_show = [eixoX[0], eixoX[len(eixoX)//2], eixoX[-1]]
-plt.xticks(eixoX_to_show)
-plt.xlabel('Período')
-plt.ylabel('Valores')
-plt.title('Linha do tempo do valor de compra da moeda')
-
-# Mostrar o gráfico
-plt.show()
-"""
+jsonPeriodo = getJsonCotacaoPeriodo("USD",moeda_base,start_date,end_date)
+listaPeriodo = ajustarTabelaDoPeriodo(jsonPeriodo)
+print(listaPeriodo)
